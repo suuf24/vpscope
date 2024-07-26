@@ -22,9 +22,9 @@ A simple Bash script to manage Virtual Private Servers (VPS) by running commands
 2. Clone the repository:
 
    ```bash
-   touch vps.json
    git clone https://github.com/suuf24/vpscope
    cd vpscope
+   touch vps.json
    chmod +x vpscope.sh
 
 ## Usage
