@@ -3,50 +3,46 @@
 # JSON file containing VPS information
 JSON_FILE="vps.json"
 
-# Function to read and display the banner from .banner.txt
-display_banner() {
-  if [ -f ".banner.txt" ]; then
-    cat .banner.txt
-  else
-    echo "-----------------------------------"
-    echo "            VPScope                "
-    echo "-----------------------------------"
-  fi
-}
+# Load banner from .banner.txt
+BANNER_FILE=".banner.txt"
 
-# Function to read the JSON file and execute commands
+# Function to read JSON file and execute commands
 run_commands_on_vps() {
   local json_file=$1
 
   while true; do
-    # Prompting for a command from the user
-    read -p "Input your command: " command
+    # Prompt user for command
+    read -p "Input your command (or press CTRL+D to cancel): " command
+    if [ $? -ne 0 ]; then
+      echo -e "\nCommand input canceled."
+      break
+    fi
 
-    # Reading VPS information from the JSON file
+    # Read VPS information from JSON file
     local vps_list=$(jq -c '.vps[]' "$json_file")
 
-    # Loop through each VPS and execute the command
+    # Loop through each VPS and execute command
     for vps in $vps_list; do
       local hostname=$(echo "$vps" | jq -r '.hostname')
       local username=$(echo "$vps" | jq -r '.username')
       local password=$(echo "$vps" | jq -r '.password')
 
       echo -e "\nConnecting to $hostname..."
-      # Executing the command on the VPS
+      # Execute command on VPS
       sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" "$command"
       if [ $? -ne 0 ]; then
         echo "Failed to execute command on $hostname"
       fi
     done
 
-    read -p "The command has been applied successfully, wanna add more? (y/n): " choice
+    read -p "The command has been applied successfully, do you want to add more? (y/n): " choice
     if [[ "$choice" != "y" && "$choice" != "Y" ]]; then
       break
     fi
   done
 }
 
-# Function to add VPS to the JSON file
+# Function to add VPS to JSON file
 add_vps() {
   local json_file=$1
   while true; do
@@ -55,7 +51,7 @@ add_vps() {
     read -sp "Enter VPS password: " password
     echo
 
-    # Adding new VPS information to the JSON file
+    # Add new VPS information to JSON file
     jq --arg hostname "$hostname" --arg username "$username" --arg password "$password" \
       '.vps += [{"hostname": $hostname, "username": $username, "password": $password}]' \
       "$json_file" > tmp.json && mv tmp.json "$json_file"
@@ -69,15 +65,15 @@ add_vps() {
   done
 }
 
-# Function to remove VPS from the JSON file
+# Function to remove VPS from JSON file
 remove_vps() {
   local json_file=$1
   while true; do
-    # Displaying the list of current VPS
+    # Display the list of existing VPS
     echo -e "\nCurrent VPS List:"
     jq -r '.vps[] | "\(.hostname) \(.username)"' "$json_file" | nl
 
-    # Prompting the user to select the VPS to delete
+    # Prompt user to select VPS to delete
     read -p "Select the number of the VPS to delete (or 0 to cancel): " number
 
     if [ "$number" -eq 0 ]; then
@@ -85,7 +81,7 @@ remove_vps() {
       break
     fi
 
-    # Deleting the selected VPS
+    # Remove selected VPS
     jq --argjson number "$number" 'del(.vps[$number - 1])' "$json_file" > tmp.json && mv tmp.json "$json_file"
 
     echo -e "\nVPS number $number has been deleted from $json_file"
@@ -97,10 +93,19 @@ remove_vps() {
   done
 }
 
+# Load and display banner
+display_banner() {
+  if [ -f "$BANNER_FILE" ]; then
+    cat "$BANNER_FILE"
+  fi
+}
+
 # Main menu
 while true; do
   clear
   display_banner
+  echo "-----------------------------------"
+  echo "            VPScope Manager            "
   echo "-----------------------------------"
   echo "1. Run Commands"
   echo "2. Add VPS"
